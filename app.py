@@ -9,7 +9,7 @@ st.set_page_config(page_title="Agent Mini-Pelles", page_icon="🚜", layout="cen
 st.title("🚜 Agent de Recherche Mini-Pelles")
 st.markdown("Recherche automatisée et filtrée (Europe-TP / Annonces)")
 
-# --- Barre latérale ou filtres mobiles ---
+# --- Filtres mobiles ---
 st.subheader("🎯 Critères de recherche")
 max_price = st.slider("Prix Max (€)", 5000, 40000, 22000, step=1000)
 min_weight = st.number_input("Poids Min (Tonnes)", value=1.5, step=0.1)
@@ -20,7 +20,6 @@ keyword = st.text_input("Mot-clé optionnel (ex: Kubota, pouce, attache rapide)"
 if st.button("🔍 Lancer la recherche sur le web", type="primary"):
     with st.spinner("L'agent fouille le net pour toi..."):
         
-        # Simulation / Appel de scraping (Exemple Europe-TP)
         url = "https://www.europe-tp.com/mini-pelle-doccasion/1-12/annonces.html"
         headers = {"User-Agent": "Mozilla/5.0"}
         
@@ -40,10 +39,9 @@ if st.button("🔍 Lancer la recherche sur le web", type="primary"):
                     if link and not link.startswith("http"):
                         link = "https://www.europe-tp.com" + link
                     
-                    # Pour l'exemple, on simule des données si le HTML change
                     results.append({
                         "Titre": title if title else "Mini-pelle occasion",
-                        "Prix (€)": 18500, # Exemple extrait
+                        "Prix (€)": 18500,
                         "Lien": link
                     })
         except Exception as e:
@@ -61,7 +59,6 @@ if st.button("🔍 Lancer la recherche sur le web", type="primary"):
         
         st.success(f"Recherche terminée ! {len(df)} annonces trouvées.")
         
-        # Affichage sous forme de cartes cliquables sur mobile
         for index, row in df.iterrows():
             with st.container():
                 st.markdown(f"### {row['Titre']}")
