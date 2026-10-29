@@ -4,17 +4,16 @@ from bs4 import BeautifulSoup
 import urllib.parse
 
 st.title("🚜 Agent de Recherche Mini-Pelles")
-st.markdown("Recherche multi-sites automatisée avec aperçus stables")
+st.markdown("Recherche multi-sites automatisée et alertes Telegram")
 
 st.header("🎯 Critères de recherche")
 
-# Fourchettes de prix et de poids
 col1, col2 = st.columns(2)
 with col1:
     prix_min = st.number_input("Prix Min (€)", value=3000, step=500)
-    prix_max = st.number_input("Prix Max (€)", value=13000, step=500)
+    prix_max = st.number_input("Prix Max (€)", value=14000, step=500)
 with col2:
-    poids_min = st.number_input("Poids Min (Tonnes)", value=2.0, step=0.5)
+    poids_min = st.number_input("Poids Min (Tonnes)", value=2.5, step=0.5)
     poids_max = st.number_input("Poids Max (Tonnes)", value=3.5, step=0.5)
 
 ville = st.text_input("Ville / Région / Code Postal", value="Gironde")
@@ -24,13 +23,13 @@ st.header("📲 Configuration Telegram")
 telegram_token = st.text_input("Token du Bot Telegram", value="9081199396:AAFOHCKqkgUjry7VWgz4ihmAZ37_3icAfGs", type="password")
 chat_id = st.text_input("Chat ID Telegram", value="9245058131")
 
-def envoyer_photo_telegram(token, chat_id, photo_url, caption):
-    url = f"https://api.telegram.org/bot{token}/sendPhoto"
+def envoyer_message_telegram(token, chat_id, message):
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
         "chat_id": chat_id,
-        "photo": photo_url,
-        "caption": caption,
-        "parse_mode": "Markdown"
+        "text": message,
+        "parse_mode": "Markdown",
+        "disable_web_page_preview": False
     }
     try:
         response = requests.post(url, json=payload)
@@ -57,16 +56,12 @@ def chercher_annonces_web(mot_cle, p_min, p_max, loc):
             if a_tag:
                 lien = a_tag.get("href")
                 titre = a_tag.text.strip()
-                descriptif = snippet_tag.text.strip() if snippet_tag else "Annonce de mini-pelle repérée."
-                
-                # Lien direct et sécurisé vers un fichier image compatible Telegram & Streamlit
-                image_url = "https://images.unsplash.com/photo-1541888946425-d0fbb18f176e?auto=format&fit=crop&w=800&q=80"
+                descriptif = snippet_tag.text.strip() if snippet_tag else "Annonce repérée."
                 
                 resultats.append({
                     "titre": titre,
                     "url": lien,
-                    "description": descriptif,
-                    "image": image_url
+                    "description": descriptif
                 })
         return resultats
     except Exception as e:
@@ -79,22 +74,22 @@ if st.button("🔍 Lancer la recherche ciblée"):
     annonces = chercher_annonces_web(keyword, prix_min, prix_max, ville)
     
     if annonces:
-        st.success(f"Trouvé {len(annonces)} annonces correspondantes !")
+        st.success(f"Trouvé {len(annonces)} sources d'annonces correspondantes !")
+        
+        message_global = f"🚨 *Nouvelles alertes mini-pelles ({ville}) :*\n\n"
         
         for idx, ann in enumerate(annonces, 1):
-            col_img, col_txt = st.columns([1, 2])
-            with col_img:
-                st.image(ann["image"], width=160)
-            with col_txt:
-                st.markdown(f"**{idx}. [{ann['titre']}]({ann['url']})**")
-                st.write(ann["description"])
+            st.markdown(f"**{idx}.** [{ann['titre']}]({ann['url']})")
+            st.write(ann["description"])
             
-            caption = f"🚨 *Nouvelle annonce trouvée !*\n\n*{ann['titre']}*\n\n🔗 [Accéder à l'annonce]({ann['url']})"
-            res = envoyer_photo_telegram(telegram_token, chat_id, ann["image"], caption)
-            
-            if not res.get("ok"):
-                st.warning(f"Alerte texte envoyée mais photo refusée par Telegram pour l'annonce {idx}.")
-                
-        st.success("Traitement des annonces terminé !")
+            message_global += f"*{idx}.* [{ann['titre']}]({ann['url']})\n{ann['description']}\n\n"
+        
+        # Envoi d'un message propre et groupé sur Telegram
+        res = envoyer_message_telegram(telegram_token, chat_id, message_global)
+        
+        if res.get("ok"):
+            st.success("Toutes les alertes ont été transmises sur Telegram avec succès !")
+        else:
+            st.warning("Affiché sur l'app, mais échec d'envoi Telegram.")
     else:
         st.warning("Aucune annonce trouvée.")
