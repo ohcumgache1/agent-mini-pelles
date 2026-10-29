@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import urllib.parse
 
 st.title("🚜 Agent de Recherche Mini-Pelles")
-st.markdown("Recherche multi-sites automatisée avec vraies photos d'annonces")
+st.markdown("Recherche multi-sites automatisée avec aperçus stables")
 
 st.header("🎯 Critères de recherche")
 
@@ -59,8 +59,8 @@ def chercher_annonces_web(mot_cle, p_min, p_max, loc):
                 titre = a_tag.text.strip()
                 descriptif = snippet_tag.text.strip() if snippet_tag else "Annonce de mini-pelle repérée."
                 
-                # Vraie image d'excavatrice / mini-pelle de chantier
-                image_url = "https://images.unsplash.com/photo-1541888946425-d0fbb18f176e?w=600"
+                # Lien direct et sécurisé vers un fichier image compatible Telegram & Streamlit
+                image_url = "https://images.unsplash.com/photo-1541888946425-d0fbb18f176e?auto=format&fit=crop&w=800&q=80"
                 
                 resultats.append({
                     "titre": titre,
@@ -90,8 +90,11 @@ if st.button("🔍 Lancer la recherche ciblée"):
                 st.write(ann["description"])
             
             caption = f"🚨 *Nouvelle annonce trouvée !*\n\n*{ann['titre']}*\n\n🔗 [Accéder à l'annonce]({ann['url']})"
-            envoyer_photo_telegram(telegram_token, chat_id, ann["image"], caption)
+            res = envoyer_photo_telegram(telegram_token, chat_id, ann["image"], caption)
             
-        st.success("Toutes les alertes avec aperçus ont été transmises sur Telegram !")
+            if not res.get("ok"):
+                st.warning(f"Alerte texte envoyée mais photo refusée par Telegram pour l'annonce {idx}.")
+                
+        st.success("Traitement des annonces terminé !")
     else:
         st.warning("Aucune annonce trouvée.")
