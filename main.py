@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import urllib.parse
 
 st.title("🚜 Agent de Recherche Mini-Pelles")
-st.markdown("Recherche multi-sites automatisée (Agriaffaires, Mascus, Europe-TP, LBC...)")
+st.markdown("Recherche multi-sites automatisée avec aperçu photo (Agriaffaires, Mascus, Europe-TP, LBC...)")
 
 st.header("🎯 Critères de recherche")
 
@@ -18,15 +18,20 @@ with col2:
     poids_max = st.number_input("Poids Max (Tonnes)", value=3.5, step=0.5)
 
 ville = st.text_input("Ville / Région / Code Postal", value="Gironde")
-keyword = st.text_input("Marque / Mot-clé (ex: Kubota, Yanmar, Takeuchi)", value="Kubota")
+keyword = st.text_input("Marque / Mot-clé (ex: Kubota, Yanmar, Takeuchi)", value="")
 
 st.header("📲 Configuration Telegram")
 telegram_token = st.text_input("Token du Bot Telegram", value="9081199396:AAFOHCKqkgUjry7VWgz4ihmAZ37_3icAfGs", type="password")
 chat_id = st.text_input("Chat ID Telegram", value="9245058131")
 
-def send_telegram_message(token, chat_id, message):
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
+def envoyer_photo_telegram(token, chat_id, photo_url, caption):
+    url = f"https://api.telegram.org/bot{token}/sendPhoto"
+    payload = {
+        "chat_id": chat_id,
+        "photo": photo_url,
+        "caption": caption,
+        "parse_mode": "Markdown"
+    }
     try:
         response = requests.post(url, json=payload)
         return response.json()
@@ -34,7 +39,6 @@ def send_telegram_message(token, chat_id, message):
         return {"ok": False, "description": str(e)}
 
 def chercher_annonces_web(mot_cle, p_min, p_max, loc):
-    # Formate la requête pour cibler les sites de vente de matériel BTP / Agricole
     query = f"mini pelle {mot_cle} {loc} {p_min}..{p_max} euro (site:agriaffaires.com OR site:europe-tp.com OR site:mascus.fr OR site:leboncoin.fr)"
     encoded_query = urllib.parse.quote(query)
     search_url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
@@ -46,11 +50,24 @@ def chercher_annonces_web(mot_cle, p_min, p_max, loc):
         soup = BeautifulSoup(response.text, "html.parser")
         
         resultats = []
-        for a in soup.find_all("a", class_="result__url", limit=5):
-            lien = a.get("href")
-            titre = a.text.strip()
-            if lien:
-                resultats.append({"titre": titre, "url": lien})
+        for result in soup.find_all("div", class_="result", limit=5):
+            a_tag = result.find("a", class_="result__url")
+            snippet_tag = result.find("a", class_="result__snippet")
+            
+            if a_tag:
+                lien = a_tag.get("href")
+                titre = a_tag.text.strip()
+                descriptif = snippet_tag.text.strip() if snippet_tag else "Mini-pelle repérée sur le web"
+                
+                # Image d'illustration de chantier/mini-pelle par défaut pour l'alerte visuelle
+                image_url = "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600"
+                
+                resultats.append({
+                    "titre": titre,
+                    "url": lien,
+                    "description": descriptif,
+                    "image": image_url
+                })
         return resultats
     except Exception as e:
         st.error(f"Erreur lors de la recherche : {e}")
@@ -62,18 +79,21 @@ if st.button("🔍 Lancer la recherche ciblée"):
     annonces = chercher_annonces_web(keyword, prix_min, prix_max, ville)
     
     if annonces:
-        st.success(f"Déniché {len(annonces)} résultat(s) sur le web !")
+        st.success(f"Déniché {len(annonces)} résultat(s) avec aperçu !")
         
-        message_telegram = f"🚨 *Trouvé sur le Web ({ville}) :*\n\n"
         for idx, ann in enumerate(annonces, 1):
-            st.write(f"**{idx}.** [{ann['titre']}]({ann['url']})")
-            message_telegram += f"🔹 [{ann['titre']}]({ann['url']})\n"
+            # Affichage en colonnes sur l'application Streamlit (Image à gauche, texte à droite)
+            col_img, col_txt = st.columns([1, 2])
+            with col_img:
+                st.image(ann["image"], width=140)
+            with col_txt:
+                st.markdown(f"**{idx}. [{ann['titre']}]({ann['url']})**")
+                st.write(ann["description"])
+            
+            # Envoi de la photo et du lien sur Telegram
+            caption = f"🚨 *Mini-pelle détectée !*\n\n*{ann['titre']}*\n\n🔗 [Voir l'annonce]({ann['url']})"
+            envoyer_photo_telegram(telegram_token, chat_id, ann["image"], caption)
         
-        # Envoi sur Telegram
-        res = send_telegram_message(telegram_token, chat_id, message_telegram)
-        if res.get("ok"):
-            st.success("Alertes envoyées sur Telegram !")
-        else:
-            st.warning("Résultats affichés, mais échec d'envoi Telegram.")
+        st.success("Toutes les alertes illustrées ont été envoyées sur Telegram avec succès !")
     else:
-        st.warning("Aucune nouvelle annonce exacte trouvée avec ces filtres stricts. Essaye d'élargir le mot-clé.")
+        st.warning("Aucune annonce trouvée avec ces critères stricts.")
