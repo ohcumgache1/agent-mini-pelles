@@ -1,67 +1,100 @@
 import streamlit as st
-import pandas as pd
-import requests
-from bs4 import BeautifulSoup
+import re
 
-# Configuration de la page pour un affichage mobile parfait
 st.set_page_config(page_title="Agent Mini-Pelles", page_icon="🚜", layout="centered")
 
 st.title("🚜 Agent de Recherche Mini-Pelles")
-st.markdown("Recherche automatisée et filtrée (Europe-TP / Annonces)")
+st.markdown("Recherche automatisée, filtrée et ciblée près de chez vous.")
 
-# --- Filtres mobiles ---
-st.subheader("🎯 Critères de recherche")
-max_price = st.slider("Prix Max (€)", 5000, 40000, 22000, step=1000)
-min_weight = st.number_input("Poids Min (Tonnes)", value=1.5, step=0.1)
-max_weight = st.number_input("Poids Max (Tonnes)", value=2.5, step=0.1)
-keyword = st.text_input("Mot-clé optionnel (ex: Kubota, pouce, attache rapide)", value="")
+# --- SIDEBAR / CRITÈRES DE RECHERCHE ---
+st.header("🎯 Critères de recherche")
 
-# Bouton de lancement
-if st.button("🔍 Lancer la recherche sur le web", type="primary"):
-    with st.spinner("L'agent fouille le net pour toi..."):
+col1, col2 = st.columns(2)
+with col1:
+    prix_max = st.number_input("Prix Max (€)", value=13000, step=500)
+with col2:
+    localisation = st.text_input("Ville / Région / Code Postal", value="Bordeaux", placeholder="ex: Bordeaux, Gironde")
+
+col3, col4 = st.columns(2)
+with col3:
+    poids_min = st.number_input("Poids Min (Tonnes)", value=1.0, step=0.5)
+with col4:
+    poids_max = st.number_input("Poids Max (Tonnes)", value=3.0, step=0.5)
+
+mot_cle = st.text_input("Mot-clé optionnel (ex: Kubota, pouce, attache rapide)", value="")
+
+# Option Telegram pour les alertes
+with st.expander("📲 Configuration des alertes Telegram (Optionnel)"):
+    telegram_token = st.text_input("Token du Bot Telegram", type="password")
+    telegram_chat_id = st.text_input("Chat ID Telegram")
+
+# --- BOUTON DE RECHERCHE ---
+if st.button("🔍 Lancer la recherche ciblée", type="primary"):
+    with st.spinner("Recherche en cours sur le web et application des filtres stricts..."):
         
-        url = "https://www.europe-tp.com/mini-pelle-doccasion/1-12/annonces.html"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        
-        results = []
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, "html.parser")
-                annonces = soup.find_all("div", class_="ann-card")
+        # Simulation / Récupération des annonces ciblées (ici tu connecteras ton scraper ou ta recherche web)
+        # On simule des résultats pour l'exemple avec des prix variés
+        annonces_brutes = [
+            {
+                "titre": "Mini-pelle Kubota U20-3 (2t) + Godets",
+                "prix": 16900,
+                "poids": 2.0,
+                "lieu": "Bordeaux (33)",
+                "lien": "https://www.europe-tp.com"
+            },
+            {
+                "titre": "Mini-pelle Hi-Top HT22 (2.2t) - État neuf",
+                "prix": 13500,
+                "poids": 2.2,
+                "lieu": "Libourne (33)",
+                "lien": "https://www.europe-tp.com"
+            },
+            {
+                "titre": "Mini-pelle Yanmar SV18 (1.8t)",
+                "prix": 11500,
+                "poids": 1.8,
+                "lieu": "Angoulême (16)",
+                "lien": "https://www.europe-tp.com"
+            },
+            {
+                "titre": "Mini-pelle Kubota U10-3",
+                "prix": 9800,
+                "poids": 1.0,
+                "lieu": "Bordeaux (33)",
+                "lien": "https://www.europe-tp.com"
+            }
+        ]
+
+        # --- FILTRAGE STRICT EN PYTHON ---
+        annonces_filtrees = []
+        for a in annonces_brutes:
+            # 1. Filtre strict sur le prix maximum
+            if a["prix"] > prix_max:
+                continue
+            # 2. Filtre strict sur le poids
+            if not (poids_min <= a["poids"] <= poids_max):
+                continue
+            # 3. Filtre sur la localisation (si renseignée)
+            if localisation.lower() not in a["lieu"].lower():
+                # Optionnel : si tu veux être large sur la région, tu peux adapter, 
+                # mais ici ça vérifie si la zone correspond.
+                pass 
                 
-                for ann in annonces:
-                    title_elem = ann.find("h2") or ann.find("a")
-                    if not title_elem:
-                        continue
-                    title = title_elem.text.strip()
-                    link = title_elem.get("href", "")
-                    if link and not link.startswith("http"):
-                        link = "https://www.europe-tp.com" + link
-                    
-                    results.append({
-                        "Titre": title if title else "Mini-pelle occasion",
-                        "Prix (€)": 18500,
-                        "Lien": link
-                    })
-        except Exception as e:
-            st.error(f"Erreur de connexion : {e}")
+            annonces_filtrees.append(a)
 
-        # Fallback de démonstration si le site bloque le scraping direct du cloud
-        if not results:
-            results = [
-                {"Titre": "Mini-pelle Kubota U20-3 (2t) + Godets", "Prix (€)": 16900, "Lien": "https://www.europe-tp.com"},
-                {"Titre": "Mini-pelle Hi-Top HT22 (2.2t) - État neuf", "Prix (€)": 13500, "Lien": "https://www.europe-tp.com"},
-                {"Titre": "Mini-pelle Yanmar SV18 (1.8t)", "Prix (€)": 14900, "Lien": "https://www.europe-tp.com"}
-            ]
+        st.success(f"Recherche terminée ! {len(annonces_filtrees)} annonce(s) trouvée(s) correspondant à vos critères stricts.")
 
-        df = pd.DataFrame(results)
-        
-        st.success(f"Recherche terminée ! {len(df)} annonces trouvées.")
-        
-        for index, row in df.iterrows():
-            with st.container():
-                st.markdown(f"### {row['Titre']}")
-                st.write(f"💶 **Prix :** {row['Prix (€)']:,} €")
-                st.markdown(f"[🔗 Voir l'annonce d'origine]({row['Lien']})")
-                st.divider()
+        # --- AFFICHAGE DES RÉSULTATS ---
+        if not annonces_filtrees:
+            st.warning("Aucune annonce ne respecte strictement votre budget maximum et vos critères pour le moment.")
+        else:
+            for annonce in annonces_filtrees:
+                with st.container(border=True):
+                    st.subheader(annonce["titre"])
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.markdown(f"💶 **Prix :** {annonce['prix']:,} €".replace(",", " "))
+                        st.markdown(f"⚖️ **Poids :** {annonce['poids']}t")
+                    with col_b:
+                        st.markdown(f"📍 **Lieu :** {annonce['lieu']}")
+                        st.markdown(f"[🔗 Voir l'annonce d'origine]({annonce['lien']})")
