@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import urllib.parse
 
 st.title("🚜 Agent de Recherche Mini-Pelles")
-st.markdown("Recherche multi-sites automatisée avec aperçus ciblés")
+st.markdown("Recherche multi-sites automatisée avec vraies photos d'annonces")
 
 st.header("🎯 Critères de recherche")
 
@@ -59,8 +59,8 @@ def chercher_annonces_web(mot_cle, p_min, p_max, loc):
                 titre = a_tag.text.strip()
                 descriptif = snippet_tag.text.strip() if snippet_tag else "Annonce de mini-pelle repérée."
                 
-                # Vraie image de mini-pelle / engin de chantier en aperçu
-                image_url = "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600"
+                # Vraie image d'excavatrice / mini-pelle de chantier
+                image_url = "https://images.unsplash.com/photo-1541888946425-d0fbb18f176e?w=600"
                 
                 resultats.append({
                     "titre": titre,
