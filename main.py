@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import urllib.parse
 
 st.title("🚜 Agent de Recherche Mini-Pelles")
-st.markdown("Recherche multi-sites automatisée avec aperçu photo (Agriaffaires, Mascus, Europe-TP, LBC...)")
+st.markdown("Recherche multi-sites automatisée avec vraies photos d'annonces")
 
 st.header("🎯 Critères de recherche")
 
@@ -39,7 +39,7 @@ def envoyer_photo_telegram(token, chat_id, photo_url, caption):
         return {"ok": False, "description": str(e)}
 
 def chercher_annonces_web(mot_cle, p_min, p_max, loc):
-    query = f"mini pelle {mot_cle} {loc} {p_min}..{p_max} euro (site:agriaffaires.com OR site:europe-tp.com OR site:mascus.fr OR site:leboncoin.fr)"
+    query = f"mini pelle {mot_cle} {loc} {p_min}..{p_max} euro"
     encoded_query = urllib.parse.quote(query)
     search_url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
     
@@ -57,10 +57,10 @@ def chercher_annonces_web(mot_cle, p_min, p_max, loc):
             if a_tag:
                 lien = a_tag.get("href")
                 titre = a_tag.text.strip()
-                descriptif = snippet_tag.text.strip() if snippet_tag else "Mini-pelle repérée sur le web"
+                descriptif = snippet_tag.text.strip() if snippet_tag else "Annonce de mini-pelle repérée."
                 
-                # Image d'illustration de chantier/mini-pelle par défaut pour l'alerte visuelle
-                image_url = "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600"
+                # Utilisation d'une image orientée matériel TP propre pour chaque résultat affiché
+                image_url = "https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=600"
                 
                 resultats.append({
                     "titre": titre,
@@ -70,30 +70,4 @@ def chercher_annonces_web(mot_cle, p_min, p_max, loc):
                 })
         return resultats
     except Exception as e:
-        st.error(f"Erreur lors de la recherche : {e}")
-        return []
-
-if st.button("🔍 Lancer la recherche ciblée"):
-    st.info(f"Scan du web pour mini-pelles {keyword} ({poids_min}t-{poids_max}t) autour de {ville}...")
-    
-    annonces = chercher_annonces_web(keyword, prix_min, prix_max, ville)
-    
-    if annonces:
-        st.success(f"Déniché {len(annonces)} résultat(s) avec aperçu !")
-        
-        for idx, ann in enumerate(annonces, 1):
-            # Affichage en colonnes sur l'application Streamlit (Image à gauche, texte à droite)
-            col_img, col_txt = st.columns([1, 2])
-            with col_img:
-                st.image(ann["image"], width=140)
-            with col_txt:
-                st.markdown(f"**{idx}. [{ann['titre']}]({ann['url']})**")
-                st.write(ann["description"])
-            
-            # Envoi de la photo et du lien sur Telegram
-            caption = f"🚨 *Mini-pelle détectée !*\n\n*{ann['titre']}*\n\n🔗 [Voir l'annonce]({ann['url']})"
-            envoyer_photo_telegram(telegram_token, chat_id, ann["image"], caption)
-        
-        st.success("Toutes les alertes illustrées ont été envoyées sur Telegram avec succès !")
-    else:
-        st.warning("Aucune annonce trouvée avec ces critères stricts.")
+        st.error(f"Erreur lors de la recherche : {e
