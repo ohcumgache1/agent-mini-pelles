@@ -59,7 +59,7 @@ def chercher_annonces_web(mot_cle, p_min, p_max, loc):
                 titre = a_tag.text.strip()
                 descriptif = snippet_tag.text.strip() if snippet_tag else "Annonce de mini-pelle repérée."
                 
-                # Utilisation d'une image orientée matériel TP propre pour chaque résultat affiché
+                # Image orientée matériel TP propre pour chaque résultat affiché
                 image_url = "https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=600"
                 
                 resultats.append({
@@ -70,4 +70,28 @@ def chercher_annonces_web(mot_cle, p_min, p_max, loc):
                 })
         return resultats
     except Exception as e:
-        st.error(f"Erreur lors de la recherche : {e
+        st.error(f"Erreur lors de la recherche : {e}")
+        return []
+
+if st.button("🔍 Lancer la recherche ciblée"):
+    st.info(f"Scan actif pour des mini-pelles ({poids_min}t - {poids_max}t) vers {ville}...")
+    
+    annonces = chercher_annonces_web(keyword, prix_min, prix_max, ville)
+    
+    if annonces:
+        st.success(f"Trouvé {len(annonces)} annonces correspondantes !")
+        
+        for idx, ann in enumerate(annonces, 1):
+            col_img, col_txt = st.columns([1, 2])
+            with col_img:
+                st.image(ann["image"], width=160)
+            with col_txt:
+                st.markdown(f"**{idx}. [{ann['titre']}]({ann['url']})**")
+                st.write(ann["description"])
+            
+            caption = f"🚨 *Nouvelle annonce trouvée !*\n\n*{ann['titre']}*\n\n🔗 [Accéder à l'annonce]({ann['url']})"
+            envoyer_photo_telegram(telegram_token, chat_id, ann["image"], caption)
+            
+        st.success("Toutes les alertes avec aperçus ont été transmises sur Telegram !")
+    else:
+        st.warning("Aucune annonce trouvée.")
